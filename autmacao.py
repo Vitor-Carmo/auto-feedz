@@ -55,25 +55,53 @@ except Exception as e:
 time.sleep(5)
 # ... rest of the code
 
+print("Acessando página de celebrações...")
 URL_CELEBRACAO = "https://app.feedz.com.br/celebracoes"
 driver.get(URL_CELEBRACAO)
-
-wait.until(EC.frame_to_be_available_and_switch_to_it(0))
-textarea = wait.until(EC.element_to_be_clickable((By.ID, "tinymce")))
-driver.execute_script("arguments[0].click();", textarea)
+print(f"URL atual: {driver.current_url}")
 
 try:
-    textarea.clear()
-    textarea.send_keys("Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira")
-except:
-    texto = "Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos  @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira"
-    driver.execute_script(f"arguments[0].innerHTML = '{texto}';", textarea)
+    print("Aguardando carregamento do iframe de celebração...")
+    # Tenta esperar pelo iframe antes de trocar
+    wait.until(EC.presence_of_element_located((By.TAG_NAME, "iframe")))
+    print("Iframe encontrado, tentando trocar de contexto...")
+    
+    wait.until(EC.frame_to_be_available_and_switch_to_it(0))
+    print("Contexto trocado para o iframe.")
 
-driver.switch_to.default_content()
+    print("Buscando campo de texto (tinymce)...")
+    textarea = wait.until(EC.element_to_be_clickable((By.ID, "tinymce")))
+    print("Campo de texto encontrado!")
 
-print("Automação executada com sucesso!")
+    driver.execute_script("arguments[0].click();", textarea)
+    print("Campo de texto clicado.")
 
-driver.find_element(By.ID, "sendCelebration").click()
+    try:
+        textarea.clear()
+        textarea.send_keys("Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira")
+        print("Texto inserido via send_keys.")
+    except Exception as e:
+        print(f"Erro ao usar send_keys, tentando via script... ({type(e).__name__})")
+        texto = "Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira"
+        driver.execute_script(f"arguments[0].innerHTML = '{texto}';", textarea)
+        print("Texto inserido via execute_script.")
+
+    driver.switch_to.default_content()
+    print("Voltando para o contexto principal.")
+
+    print("Tentando clicar no botão de enviar celebração...")
+    botao_enviar = wait.until(EC.element_to_be_clickable((By.ID, "sendCelebration")))
+    botao_enviar.click()
+    print("Botão de enviar clicado!")
+
+    print("Automação executada com sucesso!")
+
+except Exception as e:
+    print(f"ERRO CRÍTICO na parte de celebrações: {type(e).__name__}")
+    print(f"Mensagem de erro: {str(e)}")
+    # Opcional: print do código fonte para depuração se necessário
+    # print(driver.page_source[:500]) 
 
 time.sleep(5)
 driver.quit()
+print("Driver encerrado.")
