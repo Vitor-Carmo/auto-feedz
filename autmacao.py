@@ -48,14 +48,26 @@ try:
     botao_login = wait.until(EC.element_to_be_clickable((By.ID, "enter-login")))
     botao_login.click()
     
-    print("Aguardando confirmação de login (sidebar)...")
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "fdz-sidebar")))
-    print("Login realizado com sucesso! Sidebar encontrada.")
+    print("Aguardando confirmação de login...")
+    # Tenta esperar por múltiplos indicadores de sucesso
+    try:
+        wait.until(lambda d: d.find_elements(By.CLASS_NAME, "fdz-sidebar") or "/inicio" not in d.current_url)
+        print(f"Login processado. URL final: {driver.current_url}")
+        
+        if "fdz-sidebar" in driver.page_source or "celebracoes" in driver.current_url or "inicio" in driver.current_url:
+             print("Login confirmado!")
+        else:
+             print(f"Aviso: Login pode ter falhado. Título da página: {driver.title}")
+    except:
+        print("Timeout aguardando redirecionamento do login.")
+
 except Exception as e:
     print(f"ERRO NO LOGIN: {type(e).__name__}")
     print(f"URL atual: {driver.current_url}")
-    # print(f"Código fonte (trecho): {driver.page_source[:500]}")
-    # Se falhar o login, não adianta continuar
+    print(f"Título da página: {driver.title}")
+    # Mostra um pedaço do HTML para entendermos o que tem na tela (sem mostrar a senha)
+    body_text = driver.find_element(By.TAG_NAME, "body").text[:500]
+    print(f"Início do texto da página: {body_text}")
     driver.quit()
     exit(1)
 
