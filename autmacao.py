@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -17,121 +18,103 @@ senha = os.getenv('sua_senha')
 
 if not login or not senha:
     print("ERRO CRÍTICO: Variáveis 'seu_login' ou 'sua_senha' não encontradas!")
-    print("Certifique-se de que configurou os Secrets no GitHub Settings > Secrets > Actions.")
     exit(1)
 
 chrome_options = Options()
+
+# TÉCNICAS ANTI-DETECÇÃO
+chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+chrome_options.add_experimental_option("useAutomationExtension", False)
+chrome_options.add_argument("--window-size=1920,1080")
+chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+
 if os.getenv('GITHUB_ACTIONS'):
     print("Ambiente GitHub Actions detectado. Usando modo headless...")
-    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless=new") # Usando o novo modo headless que é mais difícil de detectar
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-print("Instalando/Iniciando ChromeDriver...")
+print("Iniciando navegador...")
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=chrome_options)
-wait = WebDriverWait(driver, 25)
+
+# Remove a propriedade navigator.webdriver para dificultar detecção
+driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+wait = WebDriverWait(driver, 30)
+
+def human_type(element, text):
+    for char in text:
+        element.send_keys(char)
+        time.sleep(random.uniform(0.1, 0.3)) # Digitação humana
 
 print("--- ETAPA 1: LOGIN ---")
 driver.get("https://app.feedz.com.br/inicio")
-print(f"Página de login carregada. Título: {driver.title}")
+time.sleep(3)
 
 try:
     print("Preenchendo campos de login...")
-    wait.until(EC.presence_of_element_located((By.ID, "login_email"))).send_keys(login)
-    wait.until(EC.presence_of_element_located((By.ID, "passInput"))).send_keys(senha)
+    email_field = wait.until(EC.presence_of_element_located((By.ID, "login_email")))
+    human_type(email_field, login)
+    
+    pass_field = wait.until(EC.presence_of_element_located((By.ID, "passInput")))
+    human_type(pass_field, senha)
+    
+    time.sleep(random.uniform(1, 2)) # Pausa antes do clique
     
     print("Clicando no botão de entrar...")
     botao_login = wait.until(EC.element_to_be_clickable((By.ID, "enter-login")))
     botao_login.click()
     
-    print("Aguardando confirmação de login...")
-    # Tenta esperar por múltiplos indicadores de sucesso
-    try:
-        wait.until(lambda d: d.find_elements(By.CLASS_NAME, "fdz-sidebar") or "/inicio" not in d.current_url)
-        print(f"Login processado. URL final: {driver.current_url}")
-        
-        if "fdz-sidebar" in driver.page_source or "celebracoes" in driver.current_url or "inicio" in driver.current_url:
-             print("Login confirmado!")
-        else:
-             print(f"Aviso: Login pode ter falhado. Título da página: {driver.title}")
-    except:
-        print("Timeout aguardando redirecionamento do login.")
+    print("Aguardando processamento...")
+    # Espera por qualquer sinal de sucesso ou erro
+    wait.until(lambda d: "/inicio" not in d.current_url or d.find_elements(By.CLASS_NAME, "fdz-sidebar"))
+    
+    print(f"URL após login: {driver.current_url}")
+    if "captcha" in driver.page_source.lower() or "google.com/recaptcha" in driver.page_source:
+        print("⚠️ ALERTA: Captcha detectado! A automação provavelmente será bloqueada.")
 
 except Exception as e:
     print(f"ERRO NO LOGIN: {type(e).__name__}")
     print(f"URL atual: {driver.current_url}")
-    print(f"Título da página: {driver.title}")
-    # Mostra um pedaço do HTML para entendermos o que tem na tela (sem mostrar a senha)
-    body_text = driver.find_element(By.TAG_NAME, "body").text[:500]
-    print(f"Início do texto da página: {body_text}")
     driver.quit()
     exit(1)
 
 print("--- ETAPA 2: HUMOR ---")
-seletor_mood = "input.fdz_radio_button.input[value='4']"
 try:
-    print("Tentando encontrar o seletor de humor...")
-    # Espera curta para o humor, pois ele pode não existir
-    wait_humor = WebDriverWait(driver, 10)
-    radio_button = wait_humor.until(EC.presence_of_element_located((By.CSS_SELECTOR, seletor_mood)))
+    # Pequena espera para carregar o humor
+    time.sleep(5)
+    seletor_mood = "input.fdz_radio_button.input[value='4']"
+    radio_button = driver.find_element(By.CSS_SELECTOR, seletor_mood)
     driver.execute_script("arguments[0].click();", radio_button)
-    print("Clique no botão de humor realizado!")
-    
-    time.sleep(2)
+    print("Humor selecionado!")
+    time.sleep(1)
     driver.find_element(By.ID, "fdz-btn-send-mood").click()
-    print("Humor enviado com sucesso!")
+    print("Humor enviado!")
 except:
-    print("Aviso: Humor não encontrado ou já respondido.")
+    print("Aviso: Humor ignorado.")
 
 print("--- ETAPA 3: CELEBRAÇÃO ---")
-print("Navegando para /celebracoes...")
 driver.get("https://app.feedz.com.br/celebracoes")
 time.sleep(5)
-print(f"URL atual: {driver.current_url}")
-
-if "/celebracoes" not in driver.current_url:
-    print("AVISO: A URL atual não parece ser a de celebrações. Tentando forçar novamente...")
-    driver.get("https://app.feedz.com.br/celebracoes")
-    time.sleep(5)
 
 try:
-    print("Buscando iframes na página...")
-    iframes = driver.find_elements(By.TAG_NAME, "iframe")
-    print(f"Total de iframes: {len(iframes)}")
-
-    print("Tentando entrar no iframe do editor...")
     wait.until(EC.frame_to_be_available_and_switch_to_it(0))
-    print("Contexto alterado para o iframe.")
-
-    print("Buscando textarea (tinymce)...")
     textarea = wait.until(EC.presence_of_element_located((By.ID, "tinymce")))
-    print("Campo tinymce encontrado!")
-
-    print("Limpando e inserindo texto...")
-    driver.execute_script("arguments[0].innerHTML = '';", textarea)
+    
     texto = "Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira"
-    textarea.send_keys(texto)
+    driver.execute_script(f"arguments[0].innerHTML = '{texto}';", textarea)
     print("Texto inserido.")
 
     driver.switch_to.default_content()
-    print("Voltando para o contexto principal...")
-
-    print("Clicando em enviar celebração...")
     botao_enviar = wait.until(EC.element_to_be_clickable((By.ID, "sendCelebration")))
     botao_enviar.click()
-    print("Botão de enviar clicado!")
-    
-    print("Automação finalizada com sucesso!")
+    print("Celebração enviada!")
 
 except Exception as e:
-    print(f"ERRO NA CELEBRAÇÃO: {type(e).__name__}")
-    print(f"Mensagem: {str(e)}")
-    print(f"URL no momento do erro: {driver.current_url}")
+    print(f"Erro na celebração: {type(e).__name__}")
 
 time.sleep(5)
 driver.quit()
-print("Sessão encerrada.")
+print("Processo finalizado.")
