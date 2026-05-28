@@ -1,0 +1,1 @@
+py "C:\Users\lhribeiro\Desktop\feedz\autmacao.py"
