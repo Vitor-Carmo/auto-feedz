@@ -97,23 +97,55 @@ except:
 
 print("--- ETAPA 3: CELEBRAÇÃO ---")
 driver.get("https://app.feedz.com.br/celebracoes")
-time.sleep(5)
+time.sleep(7) # Um pouco mais de tempo para carregar o editor pesado
 
 try:
+    print("Aguardando o editor de celebração...")
     wait.until(EC.frame_to_be_available_and_switch_to_it(0))
-    textarea = wait.until(EC.presence_of_element_located((By.ID, "tinymce")))
     
-    texto = "Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira"
-    driver.execute_script(f"arguments[0].innerHTML = '{texto}';", textarea)
-    print("Texto inserido.")
+    # Encontra o corpo do editor
+    textarea = wait.until(EC.presence_of_element_located((By.ID, "tinymce")))
+    print("Editor encontrado. Focando e digitando...")
+    
+    # Clica e limpa o campo
+    textarea.click()
+    driver.execute_script("arguments[0].innerHTML = '';", textarea)
+    time.sleep(1)
 
+    # Insere o texto
+    texto = "Bom dia! @LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo @DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak @JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus @EmmanoelPereiraVieira"
+    
+    # Tenta usar a API do TinyMCE primeiro (mais garantido)
+    try:
+        driver.execute_script(f"tinyMCE.activeEditor.setContent('{texto}')")
+        print("Texto inserido via API TinyMCE.")
+    except:
+        # Fallback se a API falhar
+        textarea.send_keys(texto)
+        print("Texto inserido via send_keys.")
+
+    time.sleep(2)
     driver.switch_to.default_content()
+    print("Voltando ao contexto principal...")
+
+    # Espera o botão ficar clicável e clica
     botao_enviar = wait.until(EC.element_to_be_clickable((By.ID, "sendCelebration")))
-    botao_enviar.click()
-    print("Celebração enviada!")
+    
+    # Rola até o botão para garantir que ele esteja visível
+    driver.execute_script("arguments[0].scrollIntoView(true);", botao_enviar)
+    time.sleep(1)
+    
+    # Clica via JavaScript para evitar erros de "elemento interceptado"
+    driver.execute_script("arguments[0].click();", botao_enviar)
+    print("Botão de enviar celebração clicado!")
+    
+    print("Automação finalizada com sucesso!")
 
 except Exception as e:
-    print(f"Erro na celebração: {type(e).__name__}")
+    print(f"Erro na celebração: {type(e).__name__} - {str(e)}")
+    # Se der erro, tenta tirar o contexto do iframe para não travar o driver.quit()
+    try: driver.switch_to.default_content() 
+    except: pass
 
 time.sleep(5)
 driver.quit()
