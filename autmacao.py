@@ -5,11 +5,24 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
+# Carrega variáveis do arquivo .env se ele existir
+dotenv.load_dotenv()
 
 login = os.getenv('seu_login')
 senha = os.getenv('sua_senha')
 
-driver = webdriver.Chrome()
+chrome_options = Options()
+if os.getenv('GITHUB_ACTIONS'):
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+service = Service(ChromeDriverManager().install())
+driver = webdriver.Chrome(service=service, options=chrome_options)
 wait = WebDriverWait(driver, 10)
 
 driver.get("https://app.feedz.com.br/inicio")
