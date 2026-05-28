@@ -180,7 +180,7 @@ for _ in range(5):
 texto = (
     "Bom dia! "
     "@LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo "
-    "@DiegoHenriquePereiraFreitas @VitorCarmodosSantos @LuizRzezak "
+    "@DiegoHenriquePereiraFreitas @LuizRzezak "
     "@JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus "
     "@EmmanoelPereiraVieira"
 )
