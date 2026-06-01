@@ -444,8 +444,7 @@ class FeedzAutomation:
 
 
 def load_cookies(driver):
-    with open("cookies.json", "r") as f:
-        cookies = json.load(f)
+    cookies = json.loads(os.environ["FEEDZ_COOKIES"])
 
     driver.get("https://app.feedz.com.br")
 
