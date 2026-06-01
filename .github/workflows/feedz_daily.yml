@@ -1,0 +1,60 @@
+name: Feedz Daily Automation
+
+on:
+  schedule:
+    # Executa de segunda a sexta às 08:30 horário de Brasília (11:30 UTC)
+    - cron: "30 11 * * 1-5"
+  workflow_dispatch:   # Permite disparo manual pela UI do GitHub
+
+concurrency:
+  group: feedz-automation        # Impede execuções simultâneas
+  cancel-in-progress: false       # Não cancela uma run em andamento
+
+jobs:
+  run:
+    name: Feedz — Login, Humor e Celebração
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Python ───────────────────────────────────────────────────────────
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # ── 3. Dependências ─────────────────────────────────────────────────────
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      # ── 4. Chrome estável (evita versão bleeding-edge do runner) ─────────────
+      - name: Instalar Google Chrome estável
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+
+      # ── 5. Executar automação ────────────────────────────────────────────────
+      - name: Executar automação
+        env:
+          FEEDZ_LOGIN: ${{ secrets.SEU_LOGIN }}
+          FEEDZ_PASSWORD: ${{ secrets.SUA_SENHA }}
+          FEEDZ_MOOD: ${{ vars.FEEDZ_MOOD || '4' }}
+          LOG_LEVEL: INFO
+          SCREENSHOT_DIR: screenshots
+        run: python automation.py
+
+      # ── 6. Upload de screenshots em caso de falha ────────────────────────────
+      - name: Upload screenshots (somente em falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots-${{ github.run_id }}
+          path: screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
