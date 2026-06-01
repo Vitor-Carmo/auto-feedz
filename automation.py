@@ -5,6 +5,7 @@ Compatível com Python 3.12 e execução em GitHub Actions (headless).
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import random
@@ -258,6 +259,14 @@ class FeedzAutomation:
 
     def login(self) -> None:
         logger.info("▶ Etapa 1: Login")
+
+        load_cookies(self.driver)
+        self._go("/celebracoes")
+
+        if "login" not in self.driver.current_url.lower():
+            logger.info("Sessão restaurada via cookies.")
+            return
+
         self._go("/inicio")
         human_delay(2.0, 4.0)
 
@@ -432,10 +441,31 @@ class FeedzAutomation:
         logger.info("✅ Automação finalizada com sucesso.")
 
 
+
+
+def load_cookies(driver):
+    with open("cookies.json", "r") as f:
+        cookies = json.load(f)
+
+    driver.get("https://app.feedz.com.br")
+
+    for cookie in cookies:
+        try:
+            cookie.pop("sameSite", None)
+            driver.add_cookie(cookie)
+        except Exception:
+            pass
+
+    driver.refresh()
+
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 
 def main() -> None:
     try:
+        cookies = os.getenv("FEEDZ_COOKIES")
+        if cookies:
+            with open("cookies.json", "w") as f:
+                f.write(cookies)
         cfg = Config.from_env()
     except EnvironmentError as exc:
         logging.basicConfig(level=logging.ERROR)
