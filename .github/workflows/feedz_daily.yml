@@ -45,6 +45,7 @@ jobs:
           FEEDZ_LOGIN: ${{ secrets.SEU_LOGIN }}
           FEEDZ_PASSWORD: ${{ secrets.SUA_SENHA }}
           FEEDZ_MOOD: ${{ vars.FEEDZ_MOOD || '4' }}
+          FEEDZ_COOKIES: ${{ secrets.FEEDZ_COOKIES }}
           LOG_LEVEL: INFO
           SCREENSHOT_DIR: screenshots
         run: python automation.py
