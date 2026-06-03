@@ -2,9 +2,7 @@
 Feedz Automation — Login, Humor e Celebração
 Compatível com Python 3.12 e execução em GitHub Actions (headless).
 """
-
 from __future__ import annotations
-
 import json
 import logging
 import os
@@ -13,7 +11,6 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
-
 from selenium import webdriver
 from selenium.common.exceptions import (
     NoSuchFrameException,
@@ -32,7 +29,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 # ── Logging ────────────────────────────────────────────────────────────────────
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,14 +38,12 @@ def configure_logging(level: str = "INFO") -> None:
         format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
-    # Silencia logs verbosos de libs externas
     logging.getLogger("WDM").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("selenium").setLevel(logging.WARNING)
 
 
 # ── Configuração ───────────────────────────────────────────────────────────────
-
 @dataclass
 class Config:
     login: str
@@ -66,7 +60,7 @@ class Config:
     headless: bool = field(default_factory=lambda: bool(os.getenv("CI") or os.getenv("GITHUB_ACTIONS")))
     screenshot_dir: Path = field(default_factory=lambda: Path(os.getenv("SCREENSHOT_DIR", "screenshots")))
     page_load_timeout: int = 60
-    implicit_wait: int = 0          # Nunca use implicitWait junto com WebDriverWait
+    implicit_wait: int = 0
     explicit_wait: int = 30
     max_retries: int = 3
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
@@ -88,7 +82,6 @@ class Config:
 
 
 # ── Helpers de comportamento humano ───────────────────────────────────────────
-
 def human_delay(min_s: float = 0.8, max_s: float = 2.2) -> None:
     """Pausa randômica para simular ritmo humano."""
     time.sleep(random.uniform(min_s, max_s))
@@ -99,16 +92,11 @@ def human_type(element: WebElement, text: str) -> None:
     for char in text:
         element.send_keys(char)
         time.sleep(random.uniform(0.07, 0.18))
-        if random.random() < 0.04:          # ~4% de chance de micro-pausa
+        if random.random() < 0.04:
             time.sleep(random.uniform(0.25, 0.55))
 
 
 def jitter_move_and_click(driver: WebDriver, element: WebElement) -> None:
-    """
-    Move com leve offset randômico e clica via ActionChains.
-    Prefere ActionChains a execute_script('click') — evita contornar
-    eventos legítimos do browser (hover, focus, etc.).
-    """
     try:
         actions = ActionChains(driver)
         (
@@ -121,7 +109,6 @@ def jitter_move_and_click(driver: WebDriver, element: WebElement) -> None:
             .perform()
         )
     except WebDriverException:
-        # Fallback apenas se ActionChains falhar (ex.: elemento fora da viewport)
         driver.execute_script("arguments[0].scrollIntoView({block:'center'});", element)
         time.sleep(0.2)
         element.click()
@@ -133,7 +120,6 @@ def scroll_to(driver: WebDriver, element: WebElement) -> None:
 
 
 # ── Utilitário de retry ────────────────────────────────────────────────────────
-
 def with_retry(
     fn: Callable,
     *,
@@ -155,16 +141,11 @@ def with_retry(
 
 
 # ── Chrome Driver Factory ──────────────────────────────────────────────────────
-
 def build_driver(cfg: Config) -> WebDriver:
     options = Options()
-
-    # Anti-detecção legítima (evita fingerprint óbvio de WebDriver)
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
-
-    # User-agent e viewport realistas
     options.add_argument(
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -173,35 +154,28 @@ def build_driver(cfg: Config) -> WebDriver:
     options.add_argument("--lang=pt-BR,pt")
     options.add_argument("--disable-notifications")
     options.add_argument("--disable-infobars")
-
-    # Desativa o uso de /dev/shm (evita crash em ambientes com pouca memória compartilhada)
     options.add_argument("--disable-dev-shm-usage")
 
     if cfg.headless:
         logger.info("Modo headless ativado (CI detectado).")
-        options.add_argument("--headless=new")  # API headless moderna (Chrome >= 112)
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-gpu")
-        # Força resolução explícita no headless para evitar layout responsivo quebrado
         options.add_argument("--force-device-scale-factor=1")
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-
-    # Remove navigator.webdriver via CDP (persiste em todas as novas páginas)
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         "source": (
             "Object.defineProperty(navigator,'webdriver',{get:()=>undefined});"
             "Object.defineProperty(navigator,'languages',{get:()=>['pt-BR','pt','en-US']});"
         )
     })
-
     driver.set_page_load_timeout(cfg.page_load_timeout)
     return driver
 
 
 # ── Screenshot em falha ────────────────────────────────────────────────────────
-
 def save_failure_screenshot(driver: WebDriver, name: str, cfg: Config) -> None:
     cfg.screenshot_dir.mkdir(parents=True, exist_ok=True)
     path = cfg.screenshot_dir / f"{name}_{int(time.time())}.png"
@@ -213,7 +187,6 @@ def save_failure_screenshot(driver: WebDriver, name: str, cfg: Config) -> None:
 
 
 # ── Etapas da automação ────────────────────────────────────────────────────────
-
 class FeedzAutomation:
     def __init__(self, cfg: Config) -> None:
         self.cfg = cfg
@@ -221,7 +194,6 @@ class FeedzAutomation:
         self._wait: WebDriverWait | None = None
 
     # ── Ciclo de vida ──────────────────────────────────────────────────────────
-
     def __enter__(self) -> "FeedzAutomation":
         self.driver = build_driver(self.cfg)
         self._wait = WebDriverWait(
@@ -245,7 +217,6 @@ class FeedzAutomation:
         return self._wait
 
     # ── Helpers internos ───────────────────────────────────────────────────────
-
     def _go(self, path: str) -> None:
         url = f"{self.cfg.base_url}{path}"
         logger.debug("Navegando para: %s", url)
@@ -256,24 +227,13 @@ class FeedzAutomation:
             save_failure_screenshot(self.driver, stage, self.cfg)
 
     # ── ETAPA 1: Login ─────────────────────────────────────────────────────────
-
     def login(self) -> None:
         logger.info("▶ Etapa 1: Login")
-
-        load_cookies(self.driver)
-        self._go("/celebracoes")
-
-        if "login" not in self.driver.current_url.lower():
-            logger.info("Sessão restaurada via cookies.")
-            return
-
         self._go("/inicio")
         human_delay(2.0, 4.0)
-
         try:
             self._fill_login_form()
             self._await_post_login()
-            self._check_captcha()
             logger.info("✔ Login concluído. URL: %s", self.driver.current_url)  # type: ignore[union-attr]
         except Exception as exc:
             self._screenshot_on_error("login_failure")
@@ -287,7 +247,6 @@ class FeedzAutomation:
         jitter_move_and_click(d, email_field)  # type: ignore[arg-type]
         human_delay(0.3, 0.6)
         human_type(email_field, self.cfg.login)
-
         human_delay(0.5, 1.2)
 
         pass_field: WebElement = self.wait.until(
@@ -296,13 +255,46 @@ class FeedzAutomation:
         jitter_move_and_click(d, pass_field)  # type: ignore[arg-type]
         human_delay(0.2, 0.5)
         human_type(pass_field, self.cfg.password)
-
         human_delay(0.7, 1.5)
+
+        # ── Tenta resolver o reCAPTCHA antes de clicar em Entrar ──────────────
+        self._try_solve_recaptcha()
+        human_delay(0.5, 1.0)
 
         btn_login: WebElement = self.wait.until(
             EC.element_to_be_clickable((By.ID, "enter-login"))
         )
         jitter_move_and_click(d, btn_login)  # type: ignore[arg-type]
+
+    def _try_solve_recaptcha(self) -> bool:
+        """
+        Tenta clicar no checkbox 'Não sou um robô' do reCAPTCHA v2.
+        Retorna True se o clique foi realizado, False se o captcha não estava presente.
+
+        Observação: isso resolve apenas o desafio de checkbox (reCAPTCHA v2 sem imagem).
+        Se o Feedz exigir o desafio de imagens, a resolução automática não é possível
+        com Selenium puro — nesse caso considere um serviço externo (2captcha, CapMonster)
+        ou autenticação via cookie persistente (veja load_cookies()).
+        """
+        try:
+            # Aguarda o iframe do reCAPTCHA (timeout curto: não trava se ausente)
+            WebDriverWait(self.driver, 5).until(
+                EC.frame_to_be_available_and_switch_to_it(
+                    (By.XPATH, '//iframe[@title="reCAPTCHA"]')
+                )
+            )
+            checkbox: WebElement = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.CLASS_NAME, "recaptcha-checkbox-border"))
+            )
+            jitter_move_and_click(self.driver, checkbox)  # type: ignore[arg-type]
+            logger.info("✔ reCAPTCHA checkbox clicado.")
+            time.sleep(3)  # aguarda validação visual do Google
+            self.driver.switch_to.default_content()  # type: ignore[union-attr]
+            return True
+        except (TimeoutException, WebDriverException) as exc:
+            self.driver.switch_to.default_content()  # type: ignore[union-attr]
+            logger.debug("reCAPTCHA não encontrado ou não necessário: %s", exc)
+            return False
 
     def _await_post_login(self) -> None:
         """
@@ -316,18 +308,7 @@ class FeedzAutomation:
             )
         )
 
-    def _check_captcha(self) -> None:
-        src = self.driver.page_source.lower()  # type: ignore[union-attr]
-        if "captcha" in src or "recaptcha" in src:
-            logger.warning(
-                "⚠ Captcha detectado! "
-                "Automação por Selenium em ambiente CI frequentemente aciona captchas "
-                "porque o IP do runner é compartilhado e reconhecido como não-humano. "
-                "Considere autenticação via cookie/token persistente — veja o README."
-            )
-
     # ── ETAPA 2: Humor ─────────────────────────────────────────────────────────
-
     def register_mood(self) -> None:
         logger.info("▶ Etapa 2: Humor")
         try:
@@ -340,15 +321,12 @@ class FeedzAutomation:
             logger.warning("⚠ Falha ao registrar humor (não crítico): %s", exc)
 
     def _do_register_mood(self) -> None:
-        # O modal de humor aparece automaticamente após o login; não há URL dedicada
         selector = f"input.fdz_radio_button.input[value='{self.cfg.mood_value}']"
         radio: WebElement = WebDriverWait(self.driver, 10).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, selector))
         )
         human_delay(0.4, 0.9)
         self.driver.execute_script("arguments[0].click();", radio)  # type: ignore[union-attr]
-        # Radio buttons com CSS customizado frequentemente ignoram ActionChains; JS é intencional aqui.
-
         human_delay(0.5, 1.1)
 
         btn_send: WebElement = WebDriverWait(self.driver, 10).until(
@@ -357,7 +335,6 @@ class FeedzAutomation:
         jitter_move_and_click(self.driver, btn_send)  # type: ignore[arg-type]
 
     # ── ETAPA 3: Celebração ────────────────────────────────────────────────────
-
     def post_celebration(self) -> None:
         logger.info("▶ Etapa 3: Celebração")
         try:
@@ -402,12 +379,11 @@ class FeedzAutomation:
                     "&& tinyMCE.activeEditor.initialized === true;"
                 )
             )
-            # Escapar aspas simples no texto para não quebrar o JS inline
             escaped = self.cfg.celebration_text.replace("'", "\\'")
             self.driver.execute_script(  # type: ignore[union-attr]
                 f"tinyMCE.activeEditor.setContent('{escaped}');"
                 "tinyMCE.activeEditor.fire('change');"
-                "tinyMCE.activeEditor.fire('input');"   # garante debounce do campo
+                "tinyMCE.activeEditor.fire('input');"
             )
             logger.debug("Texto inserido via API TinyMCE.")
             return True
@@ -432,39 +408,29 @@ class FeedzAutomation:
         logger.debug("Texto inserido via iframe (fallback send_keys).")
 
     # ── Pipeline principal ─────────────────────────────────────────────────────
-
     def run(self) -> None:
         self.login()
         self.register_mood()
         self.post_celebration()
-        human_delay(2.0, 4.0)   # aguarda confirmação visual antes de fechar
+        human_delay(2.0, 4.0)
         logger.info("✅ Automação finalizada com sucesso.")
-
-
 
 
 def load_cookies(driver):
     cookies = json.loads(os.environ["FEEDZ_COOKIES"])
-
     driver.get("https://app.feedz.com.br")
-
     for cookie in cookies:
         try:
             cookie.pop("sameSite", None)
             driver.add_cookie(cookie)
         except Exception:
             pass
-
     driver.refresh()
 
-# ── Entrypoint ─────────────────────────────────────────────────────────────────
 
+# ── Entrypoint ─────────────────────────────────────────────────────────────────
 def main() -> None:
     try:
-        cookies = os.getenv("FEEDZ_COOKIES")
-        if cookies:
-            with open("cookies.json", "w") as f:
-                f.write(cookies)
         cfg = Config.from_env()
     except EnvironmentError as exc:
         logging.basicConfig(level=logging.ERROR)
