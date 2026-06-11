@@ -22,6 +22,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from dotenv import load_dotenv
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
@@ -50,11 +51,12 @@ class Config:
     password: str
     mood_value: str = "4"
     celebration_text: str = (
-        "Bom dia! "
-        "@LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @TassioLuizDantasdoCarmo "
-        "@DiegoHenriquePereiraFreitas @LuizRzezak "
+        "Bom dia, galera!"
+        "@LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @SamuelHeitorMaragatoFerreiraApolinari"
+        "@DiegoHenriquePereiraFreitas @LuizRzezak @LuisHenriqueRibeiro "
         "@JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus "
-        "@EmmanoelPereiraVieira"
+        "@EmmanoelPereiraVieira @EduardaRibasdaSilva @AnneRodriguesdosSantos "
+        "@AlexSandroSoaresFerreira @VitoriaAlbertinaRibeirodeSantana @LeonardoSegobiaPapini"
     )
     base_url: str = "https://app.feedz.com.br"
     headless: bool = field(default_factory=lambda: bool(os.getenv("CI") or os.getenv("GITHUB_ACTIONS")))
@@ -430,6 +432,8 @@ def load_cookies(driver):
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 def main() -> None:
+    load_dotenv()
+
     try:
         cfg = Config.from_env()
     except EnvironmentError as exc:
