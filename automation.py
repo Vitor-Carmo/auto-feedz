@@ -207,7 +207,13 @@ class FeedzAutomation:
             self._context.add_cookies(cookies)
             self.page.reload()
             human_delay(2.5, 4.0)
-            if "/inicio" not in self.page.url and "login" not in self.page.url.lower():
+            if "login" in self.page.url.lower():
+                logger.warning(
+                    "Cookies não funcionaram — ainda na página de login."
+                )
+                self._screenshot_on_error("cookies_expired")
+                return False
+            if self.page.locator(".fdz-sidebar").count() > 0 or "/inicio" in self.page.url:
                 logger.info("✔ Cookies carregados — sessão restaurada com sucesso.")
                 return True
             logger.warning(
