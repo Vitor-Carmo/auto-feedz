@@ -295,12 +295,25 @@ class FeedzAutomation:
             logger.warning("⚠ Falha ao registrar humor (não crítico): %s", exc)
 
     def _do_register_mood(self) -> None:
-        selector = f"input.fdz_radio_button.input[value='{self.cfg.mood_value}']"
         p = self.page
-        radio = p.locator(selector)
-        radio.wait_for(timeout=10_000)
-        human_delay(0.4, 0.9)
-        radio.evaluate("el => el.click()")
+        mood_map = {
+            "1": "Muito triste", "2": "Triste", "3": "Neutro",
+            "4": "Feliz", "5": "Muito feliz",
+        }
+        mood_alt = mood_map.get(self.cfg.mood_value, "Feliz")
+
+        try:
+            img = p.locator(f"label.radio-inline img[alt='{mood_alt}']")
+            img.wait_for(timeout=5_000)
+            img.click()
+            logger.debug("Humor clicado via imagem: %s", mood_alt)
+        except PwTimeoutError:
+            sel = f"input.fdz_radio_button.input[value='{self.cfg.mood_value}']"
+            radio = p.locator(sel)
+            radio.wait_for(timeout=5_000, state="attached")
+            radio.evaluate("el => el.click()")
+            logger.debug("Humor clicado via JS no input.")
+
         human_delay(0.5, 1.1)
 
         btn_send = p.locator("#fdz-btn-send-mood")
