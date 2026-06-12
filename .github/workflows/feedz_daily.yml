@@ -28,18 +28,13 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      # ── 3. Dependências ─────────────────────────────────────────────────────
+      # ── 3. Dependências + Chromium do Playwright ─────────────────────────────
       - name: Instalar dependências
-        run: pip install -r requirements.txt
-
-      # ── 4. Chrome estável (evita versão bleeding-edge do runner) ─────────────
-      - name: Instalar Google Chrome estável
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y google-chrome-stable
-          google-chrome --version
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
 
-      # ── 5. Executar automação ────────────────────────────────────────────────
+      # ── 4. Executar automação ────────────────────────────────────────────────
       - name: Executar automação
         env:
           FEEDZ_LOGIN: ${{ secrets.SEU_LOGIN }}
@@ -50,7 +45,7 @@ jobs:
           SCREENSHOT_DIR: screenshots
         run: python automation.py
 
-      # ── 6. Upload de screenshots em caso de falha ────────────────────────────
+      # ── 5. Upload de screenshots em caso de falha ────────────────────────────
       - name: Upload screenshots (somente em falha)
         if: failure()
         uses: actions/upload-artifact@v4
