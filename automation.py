@@ -10,8 +10,10 @@ import os
 import random
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 from playwright.sync_api import (
@@ -41,14 +43,17 @@ class Config:
     login: str
     password: str
     mood_value: str = "4"
-    celebration_text: str = (
-        "Bom dia, galera! "
+    _base_celebration_text: str = (
         "@LucasNicoliniMartinsdeSouza @LiveaBritodaSilva @SamuelHeitorMaragatoFerreiraApolinari "
         "@DiegoHenriquePereiraFreitas @LuizRzezak @LuisHenriqueRibeiro "
         "@JanaineMaielidaSilvaRibeiro @EduardoMazelli @RafaelAraujoMeiraDeJesus "
         "@EmmanoelPereiraVieira @EduardaRibasdaSilva @AnneRodriguesdosSantos "
         "@AlexSandroSoaresFerreira @VitoriaAlbertinaRibeirodeSantana @LeonardoSegobiaPapini"
     )
+
+    def get_celebration_text(self) -> str:
+        return f"{greeting_by_time()}, galera! {self._base_celebration_text}"
+
     base_url: str = "https://app.feedz.com.br"
     headless: bool = field(
         default_factory=lambda: bool(os.getenv("CI") or os.getenv("GITHUB_ACTIONS"))
@@ -126,6 +131,19 @@ def with_retry(
             if attempt == retries:
                 raise
             time.sleep(delay * attempt)
+
+
+# ── Saudação baseada no horário ────────────────────────────────────────────────
+TZ_BR = ZoneInfo("America/Sao_Paulo")
+
+
+def greeting_by_time() -> str:
+    hour = datetime.now(TZ_BR).hour
+    if hour < 12:
+        return "Bom dia"
+    if hour < 18:
+        return "Boa tarde"
+    return "Boa noite"
 
 
 # ── Screenshot em falha ────────────────────────────────────────────────────────
@@ -357,7 +375,7 @@ class FeedzAutomation:
                 " && tinyMCE.activeEditor.initialized === true",
                 timeout=15_000,
             )
-            escaped = self.cfg.celebration_text.replace("'", "\\'")
+            escaped = self.cfg.get_celebration_text().replace("'", "\\'")
             self.page.evaluate(
                 f"tinyMCE.activeEditor.setContent('{escaped}');"
                 "tinyMCE.activeEditor.fire('change');"
@@ -380,7 +398,7 @@ class FeedzAutomation:
         editor.click()
         editor.evaluate("el => el.innerHTML = ''")
         human_delay(0.4, 0.8)
-        self.page.keyboard.type(self.cfg.celebration_text, delay=80)
+        self.page.keyboard.type(self.cfg.get_celebration_text(), delay=80)
         logger.debug("Texto inserido via iframe (fallback).")
 
     # ── Pipeline principal ─────────────────────────────────────────────────────
